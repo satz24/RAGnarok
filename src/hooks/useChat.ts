@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import type { Document, Message } from '../types'
 import { getApiKey } from '../lib/apiKey'
-import { streamChatWithDocuments, formatGeminiError } from '../services/gemini'
+import { streamChatWithDocuments, formatGeminiError, stripInlinePageReferences } from '../services/gemini'
 
 function selectionKey(docs: Document[]) {
   return docs.map((d) => d.id).sort().join(',')
@@ -32,7 +32,7 @@ function welcomeMessage(allSelected: Document[], readySelected: Document[]): Mes
     return {
       id: 'welcome',
       role: 'assistant',
-      content: `**${doc.name}** is ready (${doc.pages} pages). Ask me anything — answers include page citations.`,
+      content: `**${doc.name}** is ready (${doc.pages} pages). Ask me anything — sources are listed separately below each answer.`,
       timestamp: new Date(),
     }
   }
@@ -134,7 +134,9 @@ export function useChat(allSelectedDocuments: Document[], readySelectedDocuments
         for await (const event of streamChatWithDocuments(apiKey, docContexts, messages, content)) {
           if (event.type === 'chunk') {
             streamedContent += event.text
-            const display = streamedContent.replace(/CITATIONS:\s*\[[\s\S]*$/, '').trim()
+            const display = stripInlinePageReferences(
+              streamedContent.replace(/CITATIONS:\s*\[[\s\S]*$/, '').trim()
+            )
             setMessages((prev) =>
               prev.map((m) => (m.id === assistantId ? { ...m, content: display } : m))
             )

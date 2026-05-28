@@ -12,25 +12,95 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function renderMarkdown(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\n|^[\d]+\.\s)/gm)
+function renderInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={i} className="font-semibold text-white">
+        <strong key={`${keyPrefix}-b-${i}`} className="font-bold text-white">
           {part.slice(2, -2)}
         </strong>
       )
     }
-    if (part === '\n') return <br key={i} />
-    if (/^\d+\.\s/.test(part)) {
+    return part ? <span key={`${keyPrefix}-t-${i}`}>{part}</span> : null
+  })
+}
+
+function renderMarkdown(text: string) {
+  if (!text.trim()) return null
+
+  const blocks = text.split(/\n\n+/)
+
+  return blocks.map((block, blockIdx) => {
+    const lines = block.split('\n').filter((l) => l.trim())
+    if (lines.length === 0) return null
+
+    const isBulletList = lines.every((l) => /^[*-]\s+/.test(l.trim()))
+    const isNumberedList = lines.every((l) => /^\d+\.\s+/.test(l.trim()))
+
+    if (isBulletList) {
       return (
-        <span key={i} className="mt-1 block pl-4">
-          {part}
-        </span>
+        <ul key={blockIdx} className="mb-5 space-y-4 last:mb-0">
+          {lines.map((line, i) => (
+            <li key={i} className="flex gap-3.5">
+              <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-cyan-glow/90 shadow-[0_0_8px_rgba(6,182,212,0.4)]" />
+              <span className="flex-1">{renderInline(line.trim().replace(/^[*-]\s+/, ''), `${blockIdx}-${i}`)}</span>
+            </li>
+          ))}
+        </ul>
       )
     }
-    return part
+
+    if (isNumberedList) {
+      return (
+        <ol key={blockIdx} className="mb-5 list-decimal space-y-4 pl-6 last:mb-0 marker:font-bold marker:text-neural-400">
+          {lines.map((line, i) => (
+            <li key={i} className="pl-2">
+              {renderInline(line.trim().replace(/^\d+\.\s+/, ''), `${blockIdx}-${i}`)}
+            </li>
+          ))}
+        </ol>
+      )
+    }
+
+    return (
+      <div key={blockIdx} className="mb-5 space-y-4 last:mb-0">
+        {lines.map((line, i) => {
+          const trimmed = line.trim()
+          if (/^[*-]\s+/.test(trimmed)) {
+            return (
+              <div key={i} className="flex gap-3.5">
+                <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-cyan-glow/90 shadow-[0_0_8px_rgba(6,182,212,0.4)]" />
+                <span className="flex-1">{renderInline(trimmed.replace(/^[*-]\s+/, ''), `${blockIdx}-${i}`)}</span>
+              </div>
+            )
+          }
+          if (/^#{1,3}\s+/.test(trimmed)) {
+            const level = trimmed.match(/^#+/)![0].length
+            const content = trimmed.replace(/^#+\s+/, '')
+            const className =
+              level === 1
+                ? 'font-display text-lg font-bold text-white md:text-xl'
+                : 'font-display text-base font-bold text-white md:text-lg'
+            return (
+              <p key={i} className={`${className} mt-2 first:mt-0`}>
+                {renderInline(content, `${blockIdx}-h-${i}`)}
+              </p>
+            )
+          }
+          if (/^\d+\.\s+/.test(trimmed)) {
+            return (
+              <p key={i} className="pl-2">
+                {renderInline(trimmed, `${blockIdx}-n-${i}`)}
+              </p>
+            )
+          }
+          return (
+            <p key={i}>{renderInline(trimmed, `${blockIdx}-p-${i}`)}</p>
+          )
+        })}
+      </div>
+    )
   })
 }
 
@@ -74,7 +144,7 @@ export function MessageBubble({ message, onSourceClick }: MessageBubbleProps) {
 
       <div className="min-w-0 flex-1">
         <div
-          className={`relative overflow-hidden rounded-2xl rounded-tl-md px-6 py-5 md:px-8 md:py-6 ${
+          className={`relative overflow-hidden rounded-2xl rounded-tl-md px-7 py-6 md:px-10 md:py-8 ${
             message.error
               ? 'border border-red-500/20 bg-red-500/5 backdrop-blur-xl'
               : 'glass-ai'
@@ -91,15 +161,15 @@ export function MessageBubble({ message, onSourceClick }: MessageBubbleProps) {
           )}
 
           {!message.error && message.id !== 'welcome' && (
-            <div className="mb-3 flex items-center gap-2 border-b border-white/5 pb-3">
-              <Sparkles className="h-3.5 w-3.5 text-cyan-glow" />
-              <span className="text-[11px] font-medium tracking-wide text-neural-300 uppercase">
+            <div className="mb-5 flex items-center gap-2 border-b border-white/10 pb-4">
+              <Sparkles className="h-4 w-4 text-cyan-glow" />
+              <span className="text-xs font-bold tracking-widest text-neural-200 uppercase">
                 RAGnarok
               </span>
             </div>
           )}
 
-          <div className="relative text-sm leading-[1.75] text-text-primary md:text-[15px]">
+          <div className="ai-message-body relative text-[15px] leading-[1.9] text-white/95 md:text-base md:leading-[1.95]">
             {renderMarkdown(message.content)}
             {message.isStreaming && (
               <span className="ml-0.5 inline-block h-4 w-0.5 animate-[typing-cursor_1s_ease-in-out_infinite] bg-neural-400" />
@@ -107,7 +177,7 @@ export function MessageBubble({ message, onSourceClick }: MessageBubbleProps) {
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-3 px-1">
+        <div className="mt-3 flex flex-wrap items-center gap-3 px-1">
           <span className="text-[10px] text-text-muted">{formatTime(message.timestamp)}</span>
           {message.confidence && (
             <span className="flex items-center gap-1 text-[10px] text-text-muted">

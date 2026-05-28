@@ -13,10 +13,12 @@ const MAX_TOTAL_CHARS = 80_000
 const SYSTEM_INSTRUCTION = `You are RAGnarok, an AI document research assistant. Answer questions based ONLY on the provided document text.
 
 Rules:
-- Be precise and cite page numbers AND document names when referencing specific information
-- When multiple documents are provided, clearly indicate which document each fact comes from
-- Use markdown formatting for clarity (bold, lists, etc.)
+- Write clear, flowing answers in plain language — do NOT mention page numbers, "p.", or "page X" anywhere in the main response body
+- Do NOT repeat citations inline after each sentence or paragraph
+- When multiple documents are provided, you may name which document a fact comes from, but still avoid page numbers in the body
+- Use markdown formatting for clarity (bold headings, bullet lists, etc.)
 - If the answer is not in the documents, say so clearly
+- Put ALL page-level references ONLY in the CITATIONS block at the very end (not in the answer text)
 - At the very end of your response, on its own line, append citations in this exact format:
 CITATIONS: [{"document": "filename.pdf", "page": 1, "excerpt": "relevant quote", "confidence": 0.95}]`
 
@@ -34,12 +36,24 @@ function buildDocumentsBlock(documents: DocumentContext[]): string {
     .join('\n\n')
 }
 
+export function stripInlinePageReferences(text: string): string {
+  return text
+    .replace(/\s*\(?\s*p\.?\s*\d+\s*\)?/gi, '')
+    .replace(/\s*\(?\s*page\s+\d+\s*\)?/gi, '')
+    .replace(/\s*\[\s*page\s+\d+\s*\]/gi, '')
+    .replace(/\s*\(\s*from\s+page\s+\d+\s*\)/gi, '')
+    .replace(/\s*—\s*page\s+\d+/gi, '')
+    .replace(/  +/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function parseCitations(text: string, documents: DocumentContext[]): { content: string; sources: SourceCitation[] } {
   const marker = 'CITATIONS:'
   const idx = text.lastIndexOf(marker)
-  if (idx === -1) return { content: text.trim(), sources: [] }
+  if (idx === -1) return { content: stripInlinePageReferences(text.trim()), sources: [] }
 
-  const content = text.slice(0, idx).trim()
+  const content = stripInlinePageReferences(text.slice(0, idx).trim())
   const jsonPart = text.slice(idx + marker.length).trim()
 
   const nameToId = new Map(documents.map((d) => [d.name.toLowerCase(), d.id]))
@@ -64,7 +78,7 @@ function parseCitations(text: string, documents: DocumentContext[]): { content: 
     })
     return { content, sources }
   } catch {
-    return { content: text.trim(), sources: [] }
+    return { content: stripInlinePageReferences(text.trim()), sources: [] }
   }
 }
 

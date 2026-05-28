@@ -90,6 +90,24 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+.ai-message-body {
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ai-message-body strong {
+  font-weight: 700;
+  color: #fff;
+}
+
+.ai-message-body p:last-child,
+.ai-message-body ul:last-child,
+.ai-message-body ol:last-child,
+.ai-message-body div:last-child {
+  margin-bottom: 0;
+}
+
 .glass-ai::before {
   content: "";
   position: absolute;

@@ -89,7 +89,7 @@ export function ChatArea({
       )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
-        <div className="mx-auto w-full max-w-5xl space-y-8">
+        <div className="mx-auto w-full max-w-5xl space-y-10">
           {!apiKeyConfigured && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-200/90">
               Add <code className="rounded bg-white/10 px-1 font-mono text-xs">VITE_GEMINI_API_KEY</code> to <code className="rounded bg-white/10 px-1 font-mono text-xs">.env.local</code> and restart.
